@@ -74,28 +74,28 @@ class B_PLUS_TREE:
             self.root = n
             return
 
-        p = self.root
+        n = self.root
 
-        while not p.isLeaf:
+        while not n.isLeaf:
             i = 0
-            while i < len(p.keys):
-                if k <= p.keys[i]:
+            while i < len(n.keys):
+                if k <= n.keys[i]:
                     break
                 i += 1
-            p = p.subTrees[i]
+            n = n.subTrees[i]
         
         i = 0
-        l = len(p.values)
+        l = len(n.values)
         while i < l:
-            if k < p.values[i]:
+            if k < n.values[i]:
                 break
 
             i += 1
-        p.keys.insert(i, k)
-        p.values.insert(i, k)
+        n.keys.insert(i, k)
+        n.values.insert(i, k)
         if l + 1 == self.order:
             #self.print_tree()
-            p.split(self)
+            n.split(self)
             #self.print_tree()
     
     def delete(self, k):
@@ -122,10 +122,37 @@ class B_PLUS_TREE:
             
         
     def find_range(self, k_from, k_to):
-        pass
+        n = self.root
+        while not n.isLeaf:
+            i = 0
+            while i < len(n.keys):
+                if k_from <= n.keys[i]:
+                    break
+                i += 1
+            n = n.subTrees[i]
+
+        i = 0
+        str = ''
+        while n and n.keys[i] <= k_to:
+            if n.keys[i] >= k_from:
+                str += ',{}'.format(n.values[i])
+            i += 1
+            if i == len(n.keys):
+                i = 0
+                n = n.nextNode
+        print(str[1:])
         
     def find(self, k):
-        pass
+        n = self.root
+        while not n.isLeaf:
+            print(n.keys, end='-')
+            i = 0
+            while i < len(n.keys):
+                if k <= n.keys[i]:
+                    break
+                i += 1
+            n = n.subTrees[i]
+        
 
 
 def main():
