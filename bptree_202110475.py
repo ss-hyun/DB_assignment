@@ -2,33 +2,101 @@ import sys
 
 
 class Node:
-    def __init__(self):
+    def __init__(self, keys, subTrees, parent, isLeaf, nextNode, values):
         # each node can have |order - 1| keys
-        self.keys = []
+        self.keys = keys
         
         # |order| / 2 <= # of subTree pointers <= |order|
-        self.subTrees = []
+        self.subTrees = subTrees
         
-        self.parent = None
-        self.isLeaf = False
+        self.parent = parent
+        self.isLeaf = isLeaf
         
         # leaf node has next node pointer
-        self.nextNode = None   
-        self.values = []
+        self.nextNode = nextNode   
+        self.values = values
+
+    def split(self, btree):
+        sp = btree.slice_point
+        par = self.parent
+        if self.isLeaf:
+            n_right = Node(self.keys[sp:], None, par, True, self.nextNode, self.values[sp:])
+            self.keys = self.keys[:sp]
+            self.values = self.values[:sp]
+            self.nextNode = n_right
+            key = n_right.keys[0]
+        else:
+            n_right = Node(self.keys[sp+1:], self.subTrees[sp+1:], par, False, None, None)
+            for sn in n_right.subTrees:
+                sn.parent = n_right
+            key = self.keys[sp]
+            self.keys = self.keys[:sp]
+            self.subTrees = self.subTrees[:sp+1]
+        
+        if par:
+            i = 0
+            l = len(par.keys)
+            while i < l:
+                if key < par.keys[i]:
+                    break
+                i += 1
+            par.keys.insert(i, key)
+            par.subTrees.insert(i+1, n_right)
+            if l + 1 == btree.order:
+                #btree.print_tree()
+                par.split(btree)
+                #btree.print_tree()
+        else:
+            n_root = Node([ key ], [ self, n_right ], None, False, None, None)
+            btree.root = n_root
+            self.parent = n_root
+            n_right.parent = n_root
+
+    def print_node(self):
+        str = '{}-'.format(self.keys)
+        if not self.isLeaf:
+            for s in self.subTrees:
+                str += '{},'.format(s.keys)
+        str = str[:-1]
+        print(str)
 
 
 class B_PLUS_TREE:
     def __init__(self, order):
         self.order = order
+        self.slice_point = order // 2
         self.root  = None
         pass      
         
-    def insert(self, k):        
-        n = Node()
-        n.keys.append(k)
-        n.values.append(k)
-        self.root = n
-        pass
+    def insert(self, k):
+        if self.root is None: 
+            n = Node([ k ], None, None, True, None, [ k ])
+            self.root = n
+            return
+
+        p = self.root
+
+        while not p.isLeaf:
+            i = 0
+            while i < len(p.keys):
+                if k <= p.keys[i]:
+                    break
+                i += 1
+            p = p.subTrees[i]
+        
+        i = 0
+        l = len(p.values)
+        while i < l:
+            if k < p.values[i]:
+                break
+
+            i += 1
+        p.keys.insert(i, k)
+        p.values.insert(i, k)
+        if l + 1 == self.order:
+            #self.print_tree()
+            p.split(self)
+            #self.print_tree()
     
     def delete(self, k):
         pass
@@ -41,8 +109,17 @@ class B_PLUS_TREE:
         print(l)
         pass
     
-    def print_tree(self):
-        pass
+    def print_tree(self, n = None):
+        if n is None:
+            if self.root is None:   return
+            n = self.root
+        else:
+            if n.isLeaf:    return
+        n.print_node()
+        if not n.isLeaf:
+            for s in n.subTrees:
+                self.print_tree(s)
+            
         
     def find_range(self, k_from, k_to):
         pass
@@ -57,6 +134,7 @@ def main():
     while (True):
         comm = sys.stdin.readline()
         comm = comm.replace("\n", "")
+        comm = comm.upper()
         params = comm.split()
         if len(params) < 1:
             continue
