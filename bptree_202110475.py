@@ -1,4 +1,24 @@
 import sys
+import pygame as pg
+
+
+class Visaul:
+    @staticmethod
+    def run(btree):
+        if btree is None: return
+        pg.init()
+        fps = pg.time.Clock()
+        background = pg.display.set_mode((1000, 1000))
+        running = True
+        print(btree)
+        while running:
+            fps.tick(100)
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    running = False
+            background.fill((255,255,255))
+            pg.display.update()
+        pg.quit()
 
 
 class Node:
@@ -13,11 +33,11 @@ class Node:
         self.isLeaf = isLeaf
         
         # leaf node has next node pointer
-        self.nextNode = nextNode   
+        self.nextNode = nextNode
         self.values = values
 
     def split(self, btree):
-        sp = btree.slice_point
+        sp = btree.min
         par = self.parent
         if self.isLeaf:
             n_right = Node(self.keys[sp:], None, par, True, self.nextNode, self.values[sp:])
@@ -43,14 +63,48 @@ class Node:
             par.keys.insert(i, key)
             par.subTrees.insert(i+1, n_right)
             if l + 1 == btree.order:
-                #btree.print_tree()
                 par.split(btree)
-                #btree.print_tree()
         else:
             n_root = Node([ key ], [ self, n_right ], None, False, None, None)
             btree.root = n_root
             self.parent = n_root
             n_right.parent = n_root
+
+    def merge(self, btree):
+        if len(self.keys) < btree.min:
+            par = self.parent
+            if par is None: # root node
+                if not self.keys: btree.root = self.subTrees[0]
+                return
+            idx = par.subTrees.index(self)
+            if  idx:    # left sibling exist
+                if len(par.subTrees[idx-1].keys) > self.min:      # borrow from left sibling
+                    self.keys.insert(0, par.keys[idx-1])
+                    self.subTrees.insert(0, par.subTrees[idx-1].subTrees.pop())
+                    par.keys[idx-1] = par.subTrees[idx-1].keys.pop()
+                    return
+            if idx+1 < len(par.subTrees): # right sibling exist, can't borrow from left sibling
+                if len(par.subTrees[idx+1].keys) > self.min: # borrow from right sibling
+                    self.keys.append(par.keys[idx])
+                    self.subTrees.append(par.subTrees[idx+1].subTrees.pop(0))
+                    par.keys[idx] = par.subTrees[idx+1].keys.pop(0)
+                    return
+                # can't borrow anything
+                if idx: # left sibling exist, merge with left sibling
+                    par.subTrees[idx-1].keys.append(par.keys.pop(idx-1))
+                    par.subTrees[idx-1].keys.extend(self.keys)
+                    par.subTrees[idx-1].subTrees.extend(self.subTrees)
+                    del par.subTrees[idx]
+                    # key field merge
+                    par.merge(btree)
+                    return
+                # left sibling doesn't exist, merge with right sibling
+                self.keys.append(par.keys.pop(idx))
+                self.keys.extend(par.subTrees[idx+1].keys)
+                self.subTrees.extend(par.subTrees[idx+1].subTrees)
+                del par.subTrees[idx+1]
+                # key field merge
+                par.merge(btree)
 
     def print_node(self):
         str = '{}-'.format(self.keys)
@@ -60,11 +114,10 @@ class Node:
         str = str[:-1]
         print(str)
 
-
 class B_PLUS_TREE:
     def __init__(self, order):
         self.order = order
-        self.slice_point = order // 2
+        self.min = order // 2  # leaf data(key=value) number min, inner key number min, inner tree pointer number min - 1
         self.root  = None
         pass      
         
@@ -79,7 +132,7 @@ class B_PLUS_TREE:
         while not n.isLeaf:
             i = 0
             while i < len(n.keys):
-                if k <= n.keys[i]:
+                if k < n.keys[i]:
                     break
                 i += 1
             n = n.subTrees[i]
@@ -94,13 +147,65 @@ class B_PLUS_TREE:
         n.keys.insert(i, k)
         n.values.insert(i, k)
         if l + 1 == self.order:
-            #self.print_tree()
             n.split(self)
-            #self.print_tree()
     
     def delete(self, k):
-        pass
-    
+        n = self.root
+        while not n.isLeaf:
+            i = 0
+            while i < len(n.keys):
+                if k < n.keys[i]:
+                    break
+                i += 1
+            n = n.subTrees[i]
+        i = 0
+        while i < len(n.keys):
+            if k == n.keys[i]:  # delete node if found 
+                del n.keys[i]
+                del n.values[i]
+                par = n.parent
+                if i:   # key field updated
+                    while par:
+                        if k in par.keys:
+                            par.keys[par.keys.index(k)] = n.keys[0]
+                            break
+                        par = par.parent
+                if len(n.keys) < self.min:
+                    if par is None: break   # root and leaf node, no additional work is needed
+                    idx = par.subTrees.index(n)
+                    if  idx:    # left sibling exist
+                        if len(par.subTrees[idx-1].keys) > self.min:      # borrow from left sibling
+                            n.keys.insert(0, par.subTrees[idx-1].keys.pop())
+                            n.values.insert(0, par.subTrees[idx-1].values.pop())
+                            par.keys[idx-1] = n.keys[0]
+                            #par.keys[idx-1] = n.keys.insert(0, par.subTrees[idx-1].keys.pop())[0]
+                            break
+                    if idx+1 < len(par.subTrees): # right sibling exist, can't borrow from left sibling
+                        if len(par.subTrees[idx+1].keys) > self.min: # borrow from right sibling
+                            n.keys.append(par.subTrees[idx+1].keys.pop(0))
+                            n.values.append(par.subTrees[idx+1].values.pop(0))
+                            par.keys[idx] = par.subTrees[idx+1].keys[0]
+                            break
+                        # can't borrow anything
+                        if idx: # left sibling exist, merge with left sibling
+                            par.subTrees[idx-1].keys.extend(n.keys)
+                            par.subTrees[idx-1].values.extend(n.values)
+                            par.subTrees[idx-1].nextNode = n.nextNode
+                            del par.subTrees[idx]
+                            del par.keys[idx-1]
+                            # key field merge
+                            par.subTrees[idx-1].parent.merge(self)
+                            break
+                        # left sibling doesn't exist, merge with right sibling
+                        n.keys.extend(par.subTrees[idx+1].keys)
+                        n.values.extend(par.subTrees[idx+1].values)
+                        n.nextNode = par.subTrees[idx+1].nextNode
+                        del par.subTrees[idx+1]
+                        del par.keys[idx]
+                        # key field merge
+                        n.parent.merge(self)
+                        break
+
     def print_root(self):
         l = "["
         for k in self.root.keys:
@@ -109,24 +214,34 @@ class B_PLUS_TREE:
         print(l)
         pass
     
-    def print_tree(self, n = None):
-        if n is None:
-            if self.root is None:   return
-            n = self.root
-        else:
-            if n.isLeaf:    return
-        n.print_node()
-        if not n.isLeaf:
-            for s in n.subTrees:
-                self.print_tree(s)
-            
+    def print_tree(self):
+        curr = self.root
+        ndList = []
+        while curr:
+            curr.print_node()
+            if not curr.isLeaf: ndList.extend(curr.subTrees)
+            if not ndList: break
+            curr = ndList.pop(0)
+            if curr.isLeaf: break
+        
+    # def get_tree(self, n = None):
+    #     n_str = []
+    #     curr = self.root
+    #     ndList = []
+    #     while curr:
+    #         n_str.append(curr.get_node())
+    #         if not curr.isLeaf: ndList.extend(curr.subTrees)
+    #         if not ndList: break
+    #         curr = ndList.pop(0)
+    #         if curr.isLeaf: break
+    #     return n_str
         
     def find_range(self, k_from, k_to):
         n = self.root
         while not n.isLeaf:
             i = 0
             while i < len(n.keys):
-                if k_from <= n.keys[i]:
+                if k_from < n.keys[i]:
                     break
                 i += 1
             n = n.subTrees[i]
@@ -144,15 +259,20 @@ class B_PLUS_TREE:
         
     def find(self, k):
         n = self.root
+        str = ''
         while not n.isLeaf:
-            print(n.keys, end='-')
+            str += '{}-'.format(n.keys)
             i = 0
             while i < len(n.keys):
-                if k <= n.keys[i]:
+                if k < n.keys[i]:
                     break
                 i += 1
             n = n.subTrees[i]
-        
+        for key in n.keys:
+            if k == key:
+                print(str+'{}'.format(n.keys))
+                return
+        print("NONE")
 
 
 def main():
@@ -200,6 +320,9 @@ def main():
         
         elif params[0] == "SEP":
             print("-------------------------")
+
+        elif params[0] == "VISUAL":
+            Visaul.run(myTree)
     
 if __name__ == "__main__":
     main()
