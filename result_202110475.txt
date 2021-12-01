@@ -1,11 +1,15 @@
+pygame 2.0.2 (SDL 2.0.16, Python 3.10.0)
+Hello from the pygame community. https://www.pygame.org/contribute.html
 INIT 3
 INSERT 1
 INSERT 2
 INSERT 3
 ROOT
-[3]
+[2]
 FIND 2
+[2]-[2, 3]
 PRINT
+[2]-[1],[2, 3]
 SEP
 -------------------------
 INIT 5
@@ -18,7 +22,9 @@ INSERT 9
 INSERT 3
 INSERT 11
 ROOT
-[11]
+[7]
 PRINT
+[7]-[3, 5],[7, 8, 9, 11]
 RANGE 5 8
+5,7,8
 EXIT
