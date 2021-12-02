@@ -29,9 +29,9 @@ class Node:
             n_right = Node(self.keys[sp+1:], self.subTrees[sp+1:], par, False, None, None)
             for sn in n_right.subTrees:
                 sn.parent = n_right
-            key = self.keys[sp]
             self.keys = self.keys[:sp]
             self.subTrees = self.subTrees[:sp+1]
+            key = self.keys[sp]
         
         if par:
             i = 0
@@ -96,7 +96,7 @@ class Node:
                 par.merge(btree)
                 return
             # left sibling doesn't exist, merge with right sibling
-            if idx+1 < len(par.subTrees):
+            if idx+1 < len(par.subTrees):   # right sibling exist
                 if self.isLeaf:
                     self.values.extend(par.subTrees[idx+1].values)
                     self.nextNode = par.subTrees[idx+1].nextNode
@@ -104,8 +104,8 @@ class Node:
                 else:
                     for sn in par.subTrees[idx+1].subTrees:
                         sn.parent = self
-                    self.subTrees.extend(par.subTrees[idx+1].subTrees)
                     self.keys.append(par.keys.pop(idx))
+                    self.subTrees.extend(par.subTrees[idx+1].subTrees)
                 self.keys.extend(par.subTrees[idx+1].keys)
                 del par.subTrees[idx+1]
                 # key field merge
@@ -159,20 +159,26 @@ class B_PLUS_TREE:
             n.split(self)
     
     def delete(self, k):
+        if self.root is None:    return
+
         n = self.root
+
         while not n.isLeaf:
             i = 0
             while i < len(n.keys) and k >= n.keys[i]:
                 i += 1
             n = n.subTrees[i]
+        
         i = 0
         while i < len(n.keys):
             if k == n.keys[i]:  # delete node if found 
                 del n.keys[i]
                 del n.values[i]
                 n.merge(self)
+                break
             i += 1
 
+        par = n.parent
         if not i:   # key field updated
             while par:
                 if k in par.keys:
@@ -181,24 +187,21 @@ class B_PLUS_TREE:
                 par = par.parent
 
     def print_root(self):
-        l = "["
-        for k in self.root.keys:
-            l += "{},".format(k)
-        l = l[:-1] + "]"
-        print(l)
-        pass
+        if self.root is None:   return
+        print(self.root.keys)
     
     def print_tree(self):
-        curr = self.root
-        ndList = []
-        while curr:
-            curr.print_node()
-            if not curr.isLeaf: ndList.extend(curr.subTrees)
-            if not ndList: break
-            curr = ndList.pop(0)
-            if curr.isLeaf: break
+        if self.root is None:   return
+        n = self.root
+        nList = []
+        while n:
+            n.print_node()
+            if not n.isLeaf and not n.subTrees[0].isLeaf: nList.extend(n.subTrees)
+            if not nList: break
+            n = nList.pop(0)
         
     def find_range(self, k_from, k_to):
+        if self.root is None:   return
         n = self.root
         while not n.isLeaf:
             i = 0
@@ -220,6 +223,7 @@ class B_PLUS_TREE:
         print(str[1:])
         
     def find(self, k):
+        if self.root is None:   return
         n = self.root
         str = ''
         while not n.isLeaf:
@@ -238,6 +242,7 @@ class B_PLUS_TREE:
 
 
     def isExist(self, k):
+        if self.root is None:   return None
         n = self.root
         while not n.isLeaf:
             i = 0
@@ -248,8 +253,8 @@ class B_PLUS_TREE:
             n = n.subTrees[i]
         for key in n.keys:
             if k == key:
-                return True
-        return False
+                return n
+        return None
 
 
 def main():
@@ -271,29 +276,29 @@ def main():
             
         elif params[0] == "EXIT":
             return
-            
+        
         elif params[0] == "INSERT":
             k = int(params[1])
-            myTree.insert(k)
-            
-        elif params[0] == "DELETE":
+            if myTree: myTree.insert(k)
+
+        if params[0] == "DELETE":
             k = int(params[1])
-            myTree.delete(k)            
+            if myTree:  myTree.delete(k)            
             
         elif params[0] == "ROOT":            
-            myTree.print_root()            
+            if myTree: myTree.print_root()            
             
         elif params[0] == "PRINT":            
-            myTree.print_tree()            
-                  
+            if myTree: myTree.print_tree()            
+                
         elif params[0] == "FIND":            
             k = int(params[1])
-            myTree.find(k)
+            if myTree: myTree.find(k)
             
         elif params[0] == "RANGE":            
             k_from = int(params[1])
             k_to = int(params[2])
-            myTree.find_range(k_from, k_to)
+            if myTree: myTree.find_range(k_from, k_to)
         
         elif params[0] == "SEP":
             print("-------------------------")
