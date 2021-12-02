@@ -55,42 +55,58 @@ class Node:
             par = self.parent
             if par is None: # self is root node
                 if not self.keys:   # is empty node
-                    btree.root = self.subTrees[0]
-                    btree.root.parent = None
+                    if self.isLeaf: btree.root = None
+                    else:
+                        btree.root = self.subTrees[0]
+                        btree.root.parent = None
                 return
             idx = par.subTrees.index(self)
             if  idx:    # left sibling exist
                 if len(par.subTrees[idx-1].keys) > btree.min:      # borrow from left sibling
+                    if self.isLeaf: self.values.insert(0, par.subTrees[idx-1].values.pop())
+                    else:
+                        self.subTrees.insert(0, par.subTrees[idx-1].subTrees.pop())
+                        self.subTrees[0].parent = self
                     self.keys.insert(0, par.subTrees[idx-1].keys.pop())
-                    self.subTrees.insert(0, par.subTrees[idx-1].subTrees.pop())
-                    self.subTrees[0].parent = self
                     par.keys[idx-1] = self.keys[0]
                     return
             if idx+1 < len(par.subTrees): # right sibling exist, can't borrow from left sibling
                 if len(par.subTrees[idx+1].keys) > btree.min: # borrow from right sibling
+                    if self.isLeaf: self.values.append(par.subTrees[idx+1].values.pop(0))
+                    else:
+                        par.subTrees[idx+1].subTrees[0].parent = self
+                        self.subTrees.append(par.subTrees[idx+1].subTrees.pop(0))
                     self.keys.append(par.subTrees[idx+1].keys.pop(0))
-                    par.subTrees[idx+1].subTrees[0].parent = self
-                    self.subTrees.append(par.subTrees[idx+1].subTrees.pop(0))
                     par.keys[idx] = par.subTrees[idx+1].keys[0]
                     return
             # can't borrow anything
             if idx: # left sibling exist, merge with left sibling
-                for sn in self.subTrees:
-                    sn.parent = par.subTrees[idx-1]
-                par.subTrees[idx-1].keys.append(par.keys.pop(idx-1))
+                if self.isLeaf:
+                    par.subTrees[idx-1].values.extend(self.values)
+                    par.subTrees[idx-1].nextNode = self.nextNode
+                    del par.keys[idx-1]
+                else:
+                    for sn in self.subTrees:
+                        sn.parent = par.subTrees[idx-1]
+                    par.subTrees[idx-1].keys.append(par.keys.pop(idx-1))
+                    par.subTrees[idx-1].subTrees.extend(self.subTrees)
                 par.subTrees[idx-1].keys.extend(self.keys)
-                par.subTrees[idx-1].subTrees.extend(self.subTrees)
                 del par.subTrees[idx]
                 # key field merge
                 par.merge(btree)
                 return
             # left sibling doesn't exist, merge with right sibling
             if idx+1 < len(par.subTrees):
-                for sn in par.subTrees[idx+1].subTrees:
-                    sn.parent = self
-                self.keys.append(par.keys.pop(idx))
+                if self.isLeaf:
+                    self.values.extend(par.subTrees[idx+1].values)
+                    self.nextNode = par.subTrees[idx+1].nextNode
+                    del par.keys[idx]
+                else:
+                    for sn in par.subTrees[idx+1].subTrees:
+                        sn.parent = self
+                    self.subTrees.extend(par.subTrees[idx+1].subTrees)
+                    self.keys.append(par.keys.pop(idx))
                 self.keys.extend(par.subTrees[idx+1].keys)
-                self.subTrees.extend(par.subTrees[idx+1].subTrees)
                 del par.subTrees[idx+1]
                 # key field merge
                 par.merge(btree)
@@ -114,6 +130,10 @@ class B_PLUS_TREE:
         if self.root is None: 
             n = Node([ k ], None, None, True, None, [ k ])
             self.root = n
+            return
+
+        if self.isExist(k):
+            print("{} already exists in the btree".format(k))
             return
 
         n = self.root
@@ -150,52 +170,13 @@ class B_PLUS_TREE:
             if k == n.keys[i]:  # delete node if found 
                 del n.keys[i]
                 del n.values[i]
-                par = n.parent
-                if len(n.keys) < self.min:
-                    if par is None: # root and leaf node
-                        if not n.keys:  self.root = None    # is empty node
-                        break
-                    idx = par.subTrees.index(n)
-                    if  idx:    # left sibling exist
-                        if len(par.subTrees[idx-1].keys) > self.min:      # borrow from left sibling
-                            n.keys.insert(0, par.subTrees[idx-1].keys.pop())
-                            n.values.insert(0, par.subTrees[idx-1].values.pop())
-                            par.keys[idx-1] = n.keys[0]
-                            break
-                    if idx+1 < len(par.subTrees): # right sibling exist, can't borrow from left sibling
-                        if len(par.subTrees[idx+1].keys) > self.min: # borrow from right sibling
-                            n.keys.append(par.subTrees[idx+1].keys.pop(0))
-                            n.values.append(par.subTrees[idx+1].values.pop(0))
-                            par.keys[idx] = par.subTrees[idx+1].keys[0]
-                            break
-                    # can't borrow anything
-                    if idx: # left sibling exist, merge with left sibling
-                        par.subTrees[idx-1].keys.extend(n.keys)
-                        par.subTrees[idx-1].values.extend(n.values)
-                        par.subTrees[idx-1].nextNode = n.nextNode
-                        del par.subTrees[idx]
-                        del par.keys[idx-1]
-                        # key field merge
-                        par.merge(self)
-                        break
-                    # left sibling doesn't exist, merge with right sibling
-                    if idx+1 < len(par.subTrees):
-                        n.keys.extend(par.subTrees[idx+1].keys)
-                        n.values.extend(par.subTrees[idx+1].values)
-                        n.nextNode = par.subTrees[idx+1].nextNode
-                        del par.subTrees[idx+1]
-                        del par.keys[idx]
-                        # key field merge
-                        par.merge(self)
-                        break
+                n.merge(self)
             i += 1
 
         if not i:   # key field updated
             while par:
                 if k in par.keys:
                     par.keys[par.keys.index(k)] = n.keys[0]
-                    #if n.keys:  par.keys[par.keys.index(k)] = n.keys[0]
-                    #else:   par.keys[par.keys.index(k)] = None
                     break
                 par = par.parent
 
@@ -254,6 +235,21 @@ class B_PLUS_TREE:
                 print(str+'{}'.format(n.keys))
                 return
         print("NONE")
+
+
+    def isExist(self, k):
+        n = self.root
+        while not n.isLeaf:
+            i = 0
+            while i < len(n.keys):
+                if k < n.keys[i]:
+                    break
+                i += 1
+            n = n.subTrees[i]
+        for key in n.keys:
+            if k == key:
+                return True
+        return False
 
 
 def main():
