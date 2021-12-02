@@ -161,14 +161,12 @@ class B_PLUS_TREE:
                             n.keys.insert(0, par.subTrees[idx-1].keys.pop())
                             n.values.insert(0, par.subTrees[idx-1].values.pop())
                             par.keys[idx-1] = n.keys[0]
-                            
                             break
                     if idx+1 < len(par.subTrees): # right sibling exist, can't borrow from left sibling
                         if len(par.subTrees[idx+1].keys) > self.min: # borrow from right sibling
                             n.keys.append(par.subTrees[idx+1].keys.pop(0))
                             n.values.append(par.subTrees[idx+1].values.pop(0))
                             par.keys[idx] = par.subTrees[idx+1].keys[0]
-                            
                             break
                     # can't borrow anything
                     if idx: # left sibling exist, merge with left sibling
@@ -178,7 +176,7 @@ class B_PLUS_TREE:
                         del par.subTrees[idx]
                         del par.keys[idx-1]
                         # key field merge
-                        par.subTrees[idx-1].parent.merge(self)
+                        par.merge(self)
                         break
                     # left sibling doesn't exist, merge with right sibling
                     if idx+1 < len(par.subTrees):
@@ -188,7 +186,7 @@ class B_PLUS_TREE:
                         del par.subTrees[idx+1]
                         del par.keys[idx]
                         # key field merge
-                        n.parent.merge(self)
+                        par.merge(self)
                         break
             i += 1
 
