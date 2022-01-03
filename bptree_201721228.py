@@ -29,9 +29,9 @@ class Node:
             n_right = Node(self.keys[sp+1:], self.subTrees[sp+1:], par, False, None, None)
             for sn in n_right.subTrees:
                 sn.parent = n_right
+            key = self.keys[sp]
             self.keys = self.keys[:sp]
             self.subTrees = self.subTrees[:sp+1]
-            key = self.keys[sp]
         
         if par:
             i = 0
@@ -67,8 +67,8 @@ class Node:
                     else:
                         self.subTrees.insert(0, par.subTrees[idx-1].subTrees.pop())
                         self.subTrees[0].parent = self
-                    self.keys.insert(0, par.subTrees[idx-1].keys.pop())
-                    par.keys[idx-1] = self.keys[0]
+                    self.keys.insert(0, par.keys[idx-1])
+                    par.keys[idx-1] = par.subTrees[idx-1].keys.pop()
                     return
             if idx+1 < len(par.subTrees): # right sibling exist, can't borrow from left sibling
                 if len(par.subTrees[idx+1].keys) > btree.min: # borrow from right sibling
@@ -76,8 +76,8 @@ class Node:
                     else:
                         par.subTrees[idx+1].subTrees[0].parent = self
                         self.subTrees.append(par.subTrees[idx+1].subTrees.pop(0))
-                    self.keys.append(par.subTrees[idx+1].keys.pop(0))
-                    par.keys[idx] = par.subTrees[idx+1].keys[0]
+                    self.keys.append(par.keys[idx])
+                    par.keys[idx] = par.subTrees[idx+1].keys.pop(0)
                     return
             # can't borrow anything
             if idx: # left sibling exist, merge with left sibling
